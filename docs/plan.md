@@ -90,10 +90,10 @@ llm-router/
 - [x] `src/llm_gateway/main.py` 헬스 체크 엔드포인트 구현 완료.
 - [x] 환경 변수 관리(`pydantic-settings`) 설정 완료.
 
-### Phase 2: LLM Provider 연동 (진행 예정)
+### Phase 2: LLM Provider 연동 (진행 중)
 
-- [ ] Provider 추상 클래스(`BaseLLMProvider`) 정의.
-- [ ] Google Gemini Provider 구현 및 연동.
+- [x] Provider 추상 클래스(`BaseLLMProvider`) 정의.
+- [x] Google Gemini Provider 구현 및 연동.
 - [ ] OpenAI Provider 구현 및 연동.
 
 ### Phase 3: 라우팅 및 서비스 로직
