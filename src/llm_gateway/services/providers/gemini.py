@@ -17,10 +17,10 @@ from llm_gateway.services.providers.base import BaseLLMProvider
 
 class GeminiProvider(BaseLLMProvider):
     def __init__(self):
-        if not settings.GOOGLE_API_KEY:
-            raise ValueError("GOOGLE_API_KEY is not set in environment variables.")
+        if not settings.GEMINI_API_KEY:
+            raise ValueError("GEMINI_API_KEY is not set in environment variables.")
         # Client 초기화는 동기적으로 수행
-        self.client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+        self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
     def _convert_messages(
         self, messages: list[ChatMessage]

@@ -9,14 +9,14 @@ async def test_real_gemini_call():
     print("--- Real Gemini API Call Test (Sequential) ---")
 
     # 0. Check for API Key
-    assert settings.GOOGLE_API_KEY, "GOOGLE_API_KEY not found in settings."
+    assert settings.GEMINI_API_KEY, "GEMINI_API_KEY not found in settings."
 
     provider = GeminiProvider()
 
     # 1. Basic Chat Test
     print("\n[Step 1] Testing Basic Chat...")
     request = ChatRequest(
-        model="gemini-2.0-flash",
+        model="gemini-2.0-flash-light",
         messages=[
             ChatMessage(
                 role="user",
@@ -34,7 +34,7 @@ async def test_real_gemini_call():
     # 2. JSON Mode Test
     print("\n[Step 2] Testing JSON Mode (Structured Output)...")
     request_json = ChatRequest(
-        model="gemini-2.0-flash",
+        model="gemini-2.0-flash-light",
         messages=[
             ChatMessage(
                 role="system",
