@@ -11,7 +11,10 @@ shift
 
 case "$COMMAND" in
     run)
-        uv run uvicorn gm.main:app --host localhost --port 8000 --reload
+        uv run uvicorn llm_gateway.main:app --host localhost --port 8060 --reload
+        ;;
+    test-api)
+        bash ./bin/api_test
         ;;
     lint)
         echo "Running Ruff Linter & Formatter..."
