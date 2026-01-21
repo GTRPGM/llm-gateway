@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Configuration
+BASE_URL="http://localhost:8060"
+API_KEY="your_api_key_here" # Not strictly used by the gateway auth yet, but good practice to show where it goes
+
+echo "=== 1. Health Check ==="
+curl -X GET "$BASE_URL/health"
+echo -e "\n\n"
+
+echo "=== 2. Root Check ==="
+curl -X GET "$BASE_URL/"
+echo -e "\n\n"
+
+echo "=== 3. Basic Chat Completion (Gemini) ==="
+curl -X POST "$BASE_URL/api/v1/chat/completions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gemini-2.0-flash",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},      {"role": "user", "content": "Hello! Who are you?"}
+    ],
+    "temperature": 0.7
+  }'
+echo -e "\n\n"
+
+echo "=== 4. Chat Completion with JSON Mode ==="
+curl -X POST "$BASE_URL/api/v1/chat/completions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gemini-2.0-flash",
+    "messages": [
+      {"role": "user", "content": "List 3 colors in JSON format with key \"colors\"."}
+    ],
+    "response_format": {"type": "json_object"}
+  }'
+echo -e "\n\n"

@@ -11,7 +11,16 @@ shift
 
 case "$COMMAND" in
     run)
-        uv run uvicorn gm.main:app --host localhost --port 8000 --reload
+        uv run uvicorn llm_gateway.main:app --host localhost --port 8060 --reload
+        ;;
+    run-container)
+        docker run --rm\
+          -p 8060:8060\
+          -e GEMINI_API_KEY=${GEMINI_API_KEY}\
+          llm-gateway
+        ;;
+    test-api)
+        bash ./bin/api_test
         ;;
     lint)
         echo "Running Ruff Linter & Formatter..."
@@ -22,14 +31,20 @@ case "$COMMAND" in
         echo "Running Pre-commit hooks..."
         uvx pre-commit run --all-files
         ;;
-    ci-dev)
-        echo "Simulating Dev CI (act)..."
+    ci)
+        echo "Simulating CI (act)..."
         docker context use "$CTX"
-        act pull_request -W .github/workflows/ci-dev.yml --container-architecture linux/amd64
+        act pull_request -W .github/workflows/ci.yml --container-architecture linux/amd64
+        docker context use default
+        ;;
+    cd)
+        echo "Simulating Cd (act)..."
+        docker context use "$CTX"
+        act push -W .github/workflows/cd.yml --container-architecture linux/amd64
         docker context use default
         ;;
     *)
-        echo "Usage: project {lint|ci-dev}"
+        echo "Usage: project {run|run-container|test-api|lint|ci|cd}"
         exit 1
         ;;
 esac
