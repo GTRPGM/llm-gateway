@@ -93,7 +93,7 @@ jobs:
         run: |
           uv run uvicorn llm_gateway.main:app \
             --host 127.0.0.1 \
-            --port $PORT &
+            --port ${{ env.PORT }} &
 
       - name: Wait for health check
         run: |
@@ -128,7 +128,7 @@ jobs:
             docker run -d \
               --name llm-gateway \
               --restart unless-stopped \
-              -p $PORT:$PORT \
-              -e PORT=$PORT \
+              -p ${{ env.PORT }}:${{ env.PORT }} \
+              -e PORT=${{ env.PORT }} \
               -e GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
