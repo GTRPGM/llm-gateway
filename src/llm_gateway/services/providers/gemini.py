@@ -19,7 +19,7 @@ class GeminiProvider(BaseLLMProvider):
     def __init__(self):
         if not settings.GOOGLE_API_KEY:
             raise ValueError("GOOGLE_API_KEY is not set in environment variables.")
-
+        # Client 초기화는 동기적으로 수행
         self.client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
     def _convert_messages(
@@ -89,8 +89,6 @@ class GeminiProvider(BaseLLMProvider):
             if tool.get("type") == "function":
                 fn = tool["function"]
                 # OpenAI schema to Gemini Schema mapping
-                # Gemini expects: name, description, parameters (Schema object)
-                # OpenAI parameters are JSON Schema compatible
                 function_declarations.append(
                     types.FunctionDeclaration(
                         name=fn.get("name"),
@@ -105,7 +103,10 @@ class GeminiProvider(BaseLLMProvider):
         return [types.Tool(function_declarations=function_declarations)]
 
     async def chat_complete(self, request: ChatRequest) -> ChatResponse:
-        model_name = request.model if "gemini" in request.model else "gemini-1.5-flash"
+        # 모델명 결정
+        model_name = request.model
+        if not model_name or model_name == "gemini" or model_name == "google":
+            model_name = settings.GEMINI_DEFAULT_MODEL
 
         history, system_instruction = self._convert_messages(request.messages)
 
@@ -118,10 +119,7 @@ class GeminiProvider(BaseLLMProvider):
                 response_mime_type = "application/json"
             elif request.response_format.get("type") == "json_schema":
                 response_mime_type = "application/json"
-                # Extract schema if provided
                 if "json_schema" in request.response_format:
-                    # OpenAI format: {"json_schema": {"schema": {...}, "name": ...}}
-                    # Gemini format: schema object directly
                     schema_data = request.response_format["json_schema"].get("schema")
                     if schema_data:
                         response_schema = schema_data
@@ -131,7 +129,6 @@ class GeminiProvider(BaseLLMProvider):
 
         tool_config = None
         if request.tool_choice:
-            # force specific tool or none
             mode = "AUTO"
             allowed_function_names = None
 
@@ -140,7 +137,7 @@ class GeminiProvider(BaseLLMProvider):
                     mode = "NONE"
                 elif request.tool_choice == "auto":
                     mode = "AUTO"
-                elif request.tool_choice == "required":  # OpenAI extension
+                elif request.tool_choice == "required":
                     mode = "ANY"
             elif isinstance(request.tool_choice, dict):
                 if request.tool_choice.get("type") == "function":
@@ -165,7 +162,7 @@ class GeminiProvider(BaseLLMProvider):
             tool_config=tool_config,
         )
 
-        chat = self.client.chats.create(
+        chat = self.client.aio.chats.create(
             model=model_name,
             config=config,
             history=history[:-1] if history and history[-1].role == "user" else history,
@@ -174,7 +171,6 @@ class GeminiProvider(BaseLLMProvider):
         last_message_content = ""
         if history and history[-1].role == "user":
             parts = history[-1].parts
-            # Prefer text part if available
             for part in parts:
                 if part.text:
                     last_message_content = part.text
@@ -182,14 +178,13 @@ class GeminiProvider(BaseLLMProvider):
         else:
             last_message_content = "..."
 
-        # 비동기 호출
+        # 비동기 호출 (이미 await 사용 중)
         response = await chat.send_message(message=last_message_content)
 
         # Response parsing
         response_content = None
         tool_calls = []
 
-        # Gemini can return multiple parts (text and function calls)
         if response.candidates and response.candidates[0].content.parts:
             for part in response.candidates[0].content.parts:
                 if part.text:
@@ -198,16 +193,13 @@ class GeminiProvider(BaseLLMProvider):
                     response_content += part.text
 
                 if part.function_call:
-                    # Map back to OpenAI Tool Call format
                     tool_calls.append(
                         {
                             "id": part.function_call.name,
                             "type": "function",
                             "function": {
                                 "name": part.function_call.name,
-                                "arguments": json.dumps(
-                                    part.function_call.args
-                                ),  # Args are dict, convert to json string
+                                "arguments": json.dumps(part.function_call.args),
                             },
                         }
                     )
@@ -221,9 +213,7 @@ class GeminiProvider(BaseLLMProvider):
                     index=0,
                     message=ChatMessage(
                         role="assistant",
-                        content=response_content
-                        if response_content
-                        else "",  # Ensure string
+                        content=response_content if response_content else "",
                         tool_calls=tool_calls if tool_calls else None,
                     ),
                     finish_reason="tool_calls" if tool_calls else "stop",
