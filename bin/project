@@ -13,6 +13,12 @@ case "$COMMAND" in
     run)
         uv run uvicorn llm_gateway.main:app --host localhost --port 8060 --reload
         ;;
+    run-container)
+        docker run --rm\
+          -p 8060:8060\
+          -e GOOGLE_API_KEY=${GOOGLE_API_KEY}\
+          llm-gateway
+        ;;
     test-api)
         bash ./bin/api_test
         ;;
