@@ -1,3 +1,4 @@
+import json
 import time
 import uuid
 
@@ -36,23 +37,134 @@ class GeminiProvider(BaseLLMProvider):
                     system_instruction = msg.content
                 else:
                     system_instruction += f"\n{msg.content}"
+            elif msg.role == "tool":
+                # Tool Response
+                history.append(
+                    types.Content(
+                        role="tool",
+                        parts=[
+                            types.Part(
+                                function_response=types.FunctionResponse(
+                                    name=msg.tool_call_id,
+                                    response={
+                                        "result": msg.content
+                                    },  # content is usually JSON string
+                                )
+                            )
+                        ],
+                    )
+                )
             else:
                 role = "model" if msg.role == "assistant" else "user"
-                history.append(
-                    types.Content(role=role, parts=[types.Part(text=msg.content)])
-                )
+                parts = []
+
+                if msg.content:
+                    parts.append(types.Part(text=msg.content))
+
+                if msg.tool_calls:
+                    for tool_call in msg.tool_calls:
+                        if tool_call.get("type") == "function":
+                            fn = tool_call["function"]
+                            parts.append(
+                                types.Part(
+                                    function_call=types.FunctionCall(
+                                        name=fn["name"],
+                                        args=json.loads(fn["arguments"])
+                                        if isinstance(fn["arguments"], str)
+                                        else fn["arguments"],
+                                    )
+                                )
+                            )
+
+                history.append(types.Content(role=role, parts=parts))
 
         return history, system_instruction
+
+    def _convert_tools(self, tools: list[dict] | None) -> list[types.Tool] | None:
+        if not tools:
+            return None
+
+        function_declarations = []
+        for tool in tools:
+            if tool.get("type") == "function":
+                fn = tool["function"]
+                # OpenAI schema to Gemini Schema mapping
+                # Gemini expects: name, description, parameters (Schema object)
+                # OpenAI parameters are JSON Schema compatible
+                function_declarations.append(
+                    types.FunctionDeclaration(
+                        name=fn.get("name"),
+                        description=fn.get("description"),
+                        parameters=fn.get("parameters"),
+                    )
+                )
+
+        if not function_declarations:
+            return None
+
+        return [types.Tool(function_declarations=function_declarations)]
 
     async def chat_complete(self, request: ChatRequest) -> ChatResponse:
         model_name = request.model if "gemini" in request.model else "gemini-1.5-flash"
 
         history, system_instruction = self._convert_messages(request.messages)
+
+        # Response Format Handling (JSON Mode)
+        response_mime_type = "text/plain"
+        response_schema = None
+
+        if request.response_format:
+            if request.response_format.get("type") == "json_object":
+                response_mime_type = "application/json"
+            elif request.response_format.get("type") == "json_schema":
+                response_mime_type = "application/json"
+                # Extract schema if provided
+                if "json_schema" in request.response_format:
+                    # OpenAI format: {"json_schema": {"schema": {...}, "name": ...}}
+                    # Gemini format: schema object directly
+                    schema_data = request.response_format["json_schema"].get("schema")
+                    if schema_data:
+                        response_schema = schema_data
+
+        # Tools Handling
+        gemini_tools = self._convert_tools(request.tools)
+
+        tool_config = None
+        if request.tool_choice:
+            # force specific tool or none
+            mode = "AUTO"
+            allowed_function_names = None
+
+            if isinstance(request.tool_choice, str):
+                if request.tool_choice == "none":
+                    mode = "NONE"
+                elif request.tool_choice == "auto":
+                    mode = "AUTO"
+                elif request.tool_choice == "required":  # OpenAI extension
+                    mode = "ANY"
+            elif isinstance(request.tool_choice, dict):
+                if request.tool_choice.get("type") == "function":
+                    mode = "ANY"
+                    fn_name = request.tool_choice.get("function", {}).get("name")
+                    if fn_name:
+                        allowed_function_names = [fn_name]
+
+            tool_config = types.ToolConfig(
+                function_calling_config=types.FunctionCallingConfig(
+                    mode=mode, allowed_function_names=allowed_function_names
+                )
+            )
+
         config = types.GenerateContentConfig(
             temperature=request.temperature,
             max_output_tokens=request.max_tokens,
             system_instruction=system_instruction,
+            response_mime_type=response_mime_type,
+            response_schema=response_schema,
+            tools=gemini_tools,
+            tool_config=tool_config,
         )
+
         chat = self.client.chats.create(
             model=model_name,
             config=config,
@@ -61,15 +173,44 @@ class GeminiProvider(BaseLLMProvider):
 
         last_message_content = ""
         if history and history[-1].role == "user":
-            # Extract text from the last user message
-            # history[-1].parts[0].text assuming text part
-            last_message_content = history[-1].parts[0].text
+            parts = history[-1].parts
+            # Prefer text part if available
+            for part in parts:
+                if part.text:
+                    last_message_content = part.text
+                    break
         else:
-            # Fallback or error case
             last_message_content = "..."
 
         # 비동기 호출
         response = await chat.send_message(message=last_message_content)
+
+        # Response parsing
+        response_content = None
+        tool_calls = []
+
+        # Gemini can return multiple parts (text and function calls)
+        if response.candidates and response.candidates[0].content.parts:
+            for part in response.candidates[0].content.parts:
+                if part.text:
+                    if response_content is None:
+                        response_content = ""
+                    response_content += part.text
+
+                if part.function_call:
+                    # Map back to OpenAI Tool Call format
+                    tool_calls.append(
+                        {
+                            "id": part.function_call.name,
+                            "type": "function",
+                            "function": {
+                                "name": part.function_call.name,
+                                "arguments": json.dumps(
+                                    part.function_call.args
+                                ),  # Args are dict, convert to json string
+                            },
+                        }
+                    )
 
         return ChatResponse(
             id=f"chatcmpl-{uuid.uuid4()}",
@@ -78,8 +219,14 @@ class GeminiProvider(BaseLLMProvider):
             choices=[
                 ChatResponseChoice(
                     index=0,
-                    message=ChatMessage(role="assistant", content=response.text),
-                    finish_reason="stop",
+                    message=ChatMessage(
+                        role="assistant",
+                        content=response_content
+                        if response_content
+                        else "",  # Ensure string
+                        tool_calls=tool_calls if tool_calls else None,
+                    ),
+                    finish_reason="tool_calls" if tool_calls else "stop",
                 )
             ],
         )
