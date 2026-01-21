@@ -28,7 +28,7 @@ async def test_gemini_chat_complete_basic(mock_settings, mock_genai_client):
     mock_response = MagicMock()
 
     mock_genai_client.return_value = mock_client_instance
-    mock_client_instance.chats.create.return_value = mock_chat_session
+    mock_client_instance.aio.chats.create.return_value = mock_chat_session
     mock_chat_session.send_message = AsyncMock(return_value=mock_response)
 
     # Mock Response Structure for Text
@@ -64,7 +64,7 @@ async def test_gemini_chat_complete_json_mode(mock_settings, mock_genai_client):
     mock_response = MagicMock()
 
     mock_genai_client.return_value = mock_client_instance
-    mock_client_instance.chats.create.return_value = mock_chat_session
+    mock_client_instance.aio.chats.create.return_value = mock_chat_session
     mock_chat_session.send_message = AsyncMock(return_value=mock_response)
 
     # Mock Response
@@ -84,7 +84,7 @@ async def test_gemini_chat_complete_json_mode(mock_settings, mock_genai_client):
     await provider.chat_complete(request)
 
     # Verify Config
-    _, kwargs = mock_client_instance.chats.create.call_args
+    _, kwargs = mock_client_instance.aio.chats.create.call_args
     assert kwargs["config"].response_mime_type == "application/json"
 
 
@@ -95,7 +95,7 @@ async def test_gemini_chat_complete_tool_call(mock_settings, mock_genai_client):
     mock_response = MagicMock()
 
     mock_genai_client.return_value = mock_client_instance
-    mock_client_instance.chats.create.return_value = mock_chat_session
+    mock_client_instance.aio.chats.create.return_value = mock_chat_session
     mock_chat_session.send_message = AsyncMock(return_value=mock_response)
 
     # Mock Tool Call Response
@@ -137,5 +137,5 @@ async def test_gemini_chat_complete_tool_call(mock_settings, mock_genai_client):
     assert json.loads(tool_call["function"]["arguments"]) == {"location": "Seoul"}
 
     # Verify Config
-    _, kwargs = mock_client_instance.chats.create.call_args
+    _, kwargs = mock_client_instance.aio.chats.create.call_args
     assert kwargs["config"].tools is not None
