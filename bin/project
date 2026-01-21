@@ -31,14 +31,20 @@ case "$COMMAND" in
         echo "Running Pre-commit hooks..."
         uvx pre-commit run --all-files
         ;;
-    ci-dev)
-        echo "Simulating Dev CI (act)..."
+    ci)
+        echo "Simulating CI (act)..."
         docker context use "$CTX"
-        act pull_request -W .github/workflows/ci-dev.yml --container-architecture linux/amd64
+        act pull_request -W .github/workflows/ci.yml --container-architecture linux/amd64
+        docker context use default
+        ;;
+    cd)
+        echo "Simulating Cd (act)..."
+        docker context use "$CTX"
+        act push -W .github/workflows/cd.yml --container-architecture linux/amd64
         docker context use default
         ;;
     *)
-        echo "Usage: project {lint|ci-dev}"
+        echo "Usage: project {run|run-container|test-api|lint|ci|cd}"
         exit 1
         ;;
 esac
