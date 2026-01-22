@@ -1,31 +1,42 @@
-FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS builder
+# builder stage
+FROM python:3.11-slim-bookworm AS builder
 
-ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+COPY --from=ghcr.io/astral-sh/uv:0.5.7 /uv /bin/uv
+
+ENV UV_PROJECT_ENVIRONMENT="/usr/local"
 
 WORKDIR /app
 
+COPY pyproject.toml uv.lock ./
+
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --frozen --no-install-project --no-dev
 
-COPY . /app
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
-
-
+# final stage
 FROM python:3.11-slim-bookworm
+
+# setup
+ENV PYTHONPATH=/app/src \
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY --from=builder /app/.venv /app/.venv
+RUN useradd -m appuser
 
-COPY src /app/src
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
-ENV PATH="/app/.venv/bin:$PATH" \
-    PYTHONPATH="/app/src" \
-    PYTHONUNBUFFERED=1
+COPY --chown=appuser:appuser src /app/src
 
-# Start the application
-CMD ["uvicorn", "llm_gateway.main:app", "--host", "0.0.0.0", "--port", "8060"]
+# runtime config
+ENV PORT=8060
+
+USER appuser
+
+EXPOSE 8060
+
+HEALTHCHECK --start-period=20s --interval=30s --timeout=3s --retries=3 \
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8060/health')"]
+
+CMD ["sh", "-c", "uvicorn llm_gateway.main:app --host 0.0.0.0 --port $PORT"]
