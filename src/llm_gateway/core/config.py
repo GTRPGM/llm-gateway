@@ -7,7 +7,7 @@ class Settings(BaseSettings):
 
     # LLM Keys
     OPENAI_API_KEY: str | None = None
-    GEMINI_API_KEY: str | None = None
+    GOOGLE_API_KEY: str | None = None
 
     # Model Configuration
     GEMINI_DEFAULT_MODEL: str = "gemini-2.0-flash-lite-001"
