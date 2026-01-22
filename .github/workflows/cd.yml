@@ -37,6 +37,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     outputs:
       image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
@@ -50,7 +51,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: docker/metadata-action@v5
         id: meta
@@ -70,8 +71,17 @@ jobs:
   smoke-test:
     needs: build-and-push
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
 
     steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Pull image
         run: docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
@@ -80,6 +90,7 @@ jobs:
           docker run -d \
             --name test-container \
             -p 8060:8060 \
+            -e GOOGLE_API_KEY=dummy \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Wait for health

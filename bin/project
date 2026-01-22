@@ -43,7 +43,7 @@ case "$COMMAND" in
     cd)
         echo "Simulating Cd (act)..."
         docker context use "$CTX"
-        act push -W .github/workflows/cd.yml --container-architecture linux/amd64
+        act pull_request -W .github/workflows/cd.yml --container-architecture linux/amd64
         docker context use default
         ;;
     *)
