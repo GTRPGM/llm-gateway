@@ -90,6 +90,7 @@ jobs:
           docker run -d \
             --name test-container \
             -p 8060:8060 \
+            -e GOOGLE_API_KEY=dummy \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Wait for health
