@@ -9,7 +9,7 @@ async def test_real_gemini_call():
     print("--- Real Gemini API Call Test (Sequential) ---")
 
     # 0. Check for API Key
-    assert settings.GEMINI_API_KEY, "GEMINI_API_KEY not found in settings."
+    assert settings.GOOGLE_API_KEY, "GOOGLE_API_KEY not found in settings."
 
     provider = GeminiProvider()
 

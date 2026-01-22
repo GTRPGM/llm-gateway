@@ -130,5 +130,5 @@ jobs:
               --restart unless-stopped \
               -p ${{ env.PORT }}:${{ env.PORT }} \
               -e PORT=${{ env.PORT }} \
-              -e GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
+              -e GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }} \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest

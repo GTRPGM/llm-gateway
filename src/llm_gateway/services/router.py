@@ -9,7 +9,7 @@ class LLMRouter:
         self.providers: dict[str, BaseLLMProvider] = {}
 
         # Initialize Providers if keys are present
-        if settings.GEMINI_API_KEY:
+        if settings.GOOGLE_API_KEY:
             self.providers["google"] = GeminiProvider()
 
         # 추후 OpenAI 등 추가

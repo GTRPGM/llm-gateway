@@ -10,7 +10,7 @@ from llm_gateway.services.providers.gemini import GeminiProvider
 @pytest.fixture
 def mock_settings():
     with patch("llm_gateway.services.providers.gemini.settings") as mock:
-        mock.GEMINI_API_KEY = "fake-key"
+        mock.GOOGLE_API_KEY = "fake-key"
         yield mock
 
 

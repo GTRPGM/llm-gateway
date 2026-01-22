@@ -16,7 +16,7 @@ case "$COMMAND" in
     run-container)
         docker run --rm\
           -p 8060:8060\
-          -e GEMINI_API_KEY=${GEMINI_API_KEY}\
+          -e GOOGLE_API_KEY=${GOOGLE_API_KEY}\
           llm-gateway
         ;;
     test-api)
