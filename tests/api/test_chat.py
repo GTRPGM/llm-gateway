@@ -10,12 +10,13 @@ client = TestClient(app)
 
 
 @pytest.fixture
-def mock_router():
-    with patch("llm_gateway.api.v1.chat.llm_router") as mock:
+def mock_engine():
+    engine = app.state.engine
+    with patch.object(engine, "chat", new_callable=AsyncMock) as mock:
         yield mock
 
 
-def test_chat_completions_success(mock_router):
+def test_chat_completions_success(mock_engine):
     # Setup Mock Response
     mock_response = ChatResponse(
         id="test-id",
@@ -29,7 +30,7 @@ def test_chat_completions_success(mock_router):
             )
         ],
     )
-    mock_router.route_chat_completion = AsyncMock(return_value=mock_response)
+    mock_engine.return_value = mock_response
 
     # Request Payload
     payload = {
@@ -47,11 +48,9 @@ def test_chat_completions_success(mock_router):
     assert data["model"] == "gemini-1.5-flash"
 
 
-def test_chat_completions_provider_error(mock_router):
+def test_chat_completions_provider_error(mock_engine):
     # Setup Mock to Raise Error
-    mock_router.route_chat_completion = AsyncMock(
-        side_effect=ValueError("Invalid model")
-    )
+    mock_engine.side_effect = ValueError("Invalid model")
 
     payload = {
         "model": "unknown-model",

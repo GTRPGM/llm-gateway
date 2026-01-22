@@ -3,20 +3,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from llm_gateway.extensions.providers import GeminiProvider
 from llm_gateway.schemas.chat import ChatMessage, ChatRequest
-from llm_gateway.services.providers.gemini import GeminiProvider
 
 
 @pytest.fixture
 def mock_settings():
-    with patch("llm_gateway.services.providers.gemini.settings") as mock:
+    with patch("llm_gateway.extensions.providers.gemini.settings") as mock:
         mock.GOOGLE_API_KEY = "fake-key"
         yield mock
 
 
 @pytest.fixture
 def mock_genai_client():
-    with patch("llm_gateway.services.providers.gemini.genai.Client") as mock:
+    with patch("llm_gateway.extensions.providers.gemini.genai.Client") as mock:
         yield mock
 
 

@@ -14,4 +14,4 @@ def test_health_check():
 def test_root():
     response = client.get("/")
     assert response.status_code == 200
-    assert "Welcome" in response.json()["message"]
+    assert "LLM Gateway is running" in response.json()["message"]
