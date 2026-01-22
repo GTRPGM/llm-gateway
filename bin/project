@@ -19,13 +19,16 @@ case "$COMMAND" in
           -e GOOGLE_API_KEY=${GOOGLE_API_KEY}\
           llm-gateway
         ;;
+    build)
+        docker build -t llm-gateway .
+        ;;
     test-api)
         bash ./bin/api_test
         ;;
     lint)
         echo "Running Ruff Linter & Formatter..."
-        uvx ruff check ../. --fix
-        uvx ruff format ../.
+        uvx ruff check . --fix
+        uvx ruff format .
         ;;
     pre-commit)
         echo "Running Pre-commit hooks..."
