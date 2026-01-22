@@ -6,13 +6,13 @@ from google import genai
 from google.genai import types
 
 from llm_gateway.core.config import settings
+from llm_gateway.core.interfaces import BaseLLMProvider
 from llm_gateway.schemas.chat import (
     ChatMessage,
     ChatRequest,
     ChatResponse,
     ChatResponseChoice,
 )
-from llm_gateway.services.providers.base import BaseLLMProvider
 
 
 class GeminiProvider(BaseLLMProvider):
