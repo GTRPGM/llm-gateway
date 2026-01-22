@@ -3,11 +3,11 @@ from fastapi import FastAPI
 from llm_gateway.api.v1 import chat
 from llm_gateway.core.config import settings
 from llm_gateway.core.engine import LLMEngine
-from llm_gateway.extensions.providers.gemini import GeminiProvider
+from llm_gateway.extensions.providers import GeminiProvider
 from llm_gateway.extensions.routers import SimpleRouter
 
 
-def create_app() -> FastAPI:
+def app() -> FastAPI:
     app = FastAPI(
         title=settings.PROJECT_NAME,
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
@@ -31,6 +31,3 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     return app
-
-
-app = create_app()
