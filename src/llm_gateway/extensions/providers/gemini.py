@@ -193,14 +193,16 @@ class GeminiProvider(BaseLLMProvider):
                     response_content += part.text
 
                 if part.function_call:
-                    tool_calls.append({
-                        "id": part.function_call.name,
-                        "type": "function",
-                        "function": {
-                            "name": part.function_call.name,
-                            "arguments": json.dumps(part.function_call.args),
-                        },
-                    })
+                    tool_calls.append(
+                        {
+                            "id": part.function_call.name,
+                            "type": "function",
+                            "function": {
+                                "name": part.function_call.name,
+                                "arguments": json.dumps(part.function_call.args),
+                            },
+                        }
+                    )
 
         return ChatResponse(
             id=f"chatcmpl-{uuid.uuid4()}",

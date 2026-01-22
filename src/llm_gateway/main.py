@@ -13,9 +13,7 @@ def create_app() -> FastAPI:
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
     )
 
-    providers = {
-        "google": GeminiProvider()
-    }
+    providers = {"google": GeminiProvider()}
 
     router = SimpleRouter(providers)
     engine = LLMEngine(router)
@@ -31,7 +29,6 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health_check():
         return {"status": "ok"}
-
 
     return app
 

@@ -5,6 +5,7 @@ from llm_gateway.schemas.chat import ChatRequest, ChatResponse
 
 router = APIRouter()
 
+
 @router.post("/completions", response_model=ChatResponse)
 async def chat_completions(request: Request, body: ChatRequest):
     try:
