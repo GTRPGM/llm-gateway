@@ -1,22 +1,18 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from fastapi.testclient import TestClient
 
-from llm_gateway.main import app
 from llm_gateway.schemas.chat import ChatMessage, ChatResponse, ChatResponseChoice
-
-client = TestClient(app)
 
 
 @pytest.fixture
-def mock_engine():
-    engine = app.state.engine
+def mock_engine(app_instance):
+    engine = app_instance.state.engine
     with patch.object(engine, "chat", new_callable=AsyncMock) as mock:
         yield mock
 
 
-def test_chat_completions_success(mock_engine):
+def test_chat_completions_success(mock_engine, client_instance):
     # Setup Mock Response
     mock_response = ChatResponse(
         id="test-id",
@@ -39,7 +35,7 @@ def test_chat_completions_success(mock_engine):
     }
 
     # Execute
-    response = client.post("/api/v1/chat/completions", json=payload)
+    response = client_instance.post("/api/v1/chat/completions", json=payload)
 
     # Verify
     assert response.status_code == 200
@@ -48,7 +44,7 @@ def test_chat_completions_success(mock_engine):
     assert data["model"] == "gemini-1.5-flash"
 
 
-def test_chat_completions_provider_error(mock_engine):
+def test_chat_completions_provider_error(mock_engine, client_instance):
     # Setup Mock to Raise Error
     mock_engine.side_effect = ValueError("Invalid model")
 
@@ -57,7 +53,7 @@ def test_chat_completions_provider_error(mock_engine):
         "messages": [{"role": "user", "content": "Hi"}],
     }
 
-    response = client.post("/api/v1/chat/completions", json=payload)
+    response = client_instance.post("/api/v1/chat/completions", json=payload)
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Invalid model"
