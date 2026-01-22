@@ -6,13 +6,13 @@ from google import genai
 from google.genai import types
 
 from llm_gateway.core.config import settings
+from llm_gateway.core.interfaces import BaseLLMProvider
 from llm_gateway.schemas.chat import (
     ChatMessage,
     ChatRequest,
     ChatResponse,
     ChatResponseChoice,
 )
-from llm_gateway.services.providers.base import BaseLLMProvider
 
 
 class GeminiProvider(BaseLLMProvider):
@@ -193,16 +193,14 @@ class GeminiProvider(BaseLLMProvider):
                     response_content += part.text
 
                 if part.function_call:
-                    tool_calls.append(
-                        {
-                            "id": part.function_call.name,
-                            "type": "function",
-                            "function": {
-                                "name": part.function_call.name,
-                                "arguments": json.dumps(part.function_call.args),
-                            },
-                        }
-                    )
+                    tool_calls.append({
+                        "id": part.function_call.name,
+                        "type": "function",
+                        "function": {
+                            "name": part.function_call.name,
+                            "arguments": json.dumps(part.function_call.args),
+                        },
+                    })
 
         return ChatResponse(
             id=f"chatcmpl-{uuid.uuid4()}",
