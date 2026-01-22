@@ -14,3 +14,9 @@ class BaseLLMProvider(ABC):
         Generates a response from the LLM based on the chat history.
         """
         pass
+
+
+class BaseRouter(ABC):
+    @abstractmethod
+    async def route_chat(self, request: ChatRequest) -> ChatResponse:
+        raise NotImplementedError
