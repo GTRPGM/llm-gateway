@@ -89,14 +89,14 @@ jobs:
         run: |
           docker run -d \
             --name test-container \
-            -p 8060:8060 \
+            -p ${{ env.PORT }}:${{ env.PORT }} \
             -e GOOGLE_API_KEY=dummy \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Wait for health
         run: |
           for i in {1..15}; do
-            curl -f http://localhost:8060/health && exit 0
+            curl -f http://localhost:${{ env.PORT }}/health && exit 0
             sleep 2
           done
           echo "Smoke test failed"
