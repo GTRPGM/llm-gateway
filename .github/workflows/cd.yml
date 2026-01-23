@@ -113,6 +113,14 @@ jobs:
     if: ${{ github.actor != 'nektos/act' }}
 
     steps:
+
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            docker-compose.yml
+          sparse-checkout-cone-mode: false
+
+
       - name: Upload docker-compose.yml
         uses: appleboy/scp-action@v0.1.7
         with:
