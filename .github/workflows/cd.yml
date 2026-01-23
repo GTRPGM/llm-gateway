@@ -113,22 +113,30 @@ jobs:
     if: ${{ github.actor != 'nektos/act' }}
 
     steps:
-      - uses: appleboy/ssh-action@master
+      - name: Upload docker-compose.yml
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.GCP_HOST }}
+          username: ${{ secrets.GCP_USERNAME }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          source: docker-compose.yml
+          target: /opt/services/llm-gateway/
+
+      - name: Deploy Image to GCP
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.GCP_HOST }}
           username: ${{ secrets.GCP_USERNAME }}
           key: ${{ secrets.GCP_SSH_KEY }}
           port: 22
           script: |
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            cd /opt/services/llm-gateway
 
-            docker stop llm-gateway || true
-            docker rm llm-gateway || true
+            export REGISTRY=${{ env.REGISTRY }}
+            export IMAGE_NAME=${{ env.IMAGE_NAME }}
+            export PORT=${{ env.PORT }}
 
-            docker run -d \
-              --name llm-gateway \
-              --restart unless-stopped \
-              -p ${{ env.PORT }}:${{ env.PORT }} \
-              -e PORT=${{ env.PORT }} \
-              -e GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }} \
-              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            export GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
+
+            docker compose pull
+            docker compose up -d
