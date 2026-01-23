@@ -128,7 +128,7 @@ jobs:
           username: ${{ secrets.GCP_USERNAME }}
           key: ${{ secrets.GCP_SSH_KEY }}
           source: docker-compose.yml
-          target: /opt/services/llm-gateway/
+          target: /opt/${{ env.IMAGE_NAME }}
 
       - name: Deploy Image to GCP
         uses: appleboy/ssh-action@master
@@ -138,7 +138,7 @@ jobs:
           key: ${{ secrets.GCP_SSH_KEY }}
           port: 22
           script: |
-            cd /opt/services/llm-gateway
+            cd /opt/${{ env.IMAGE_NAME }}
 
             export REGISTRY=${{ env.REGISTRY }}
             export IMAGE_NAME=${{ env.IMAGE_NAME }}
