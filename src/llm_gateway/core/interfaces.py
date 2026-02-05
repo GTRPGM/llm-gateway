@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
+from typing import AsyncIterator, Union
 
-from llm_gateway.schemas.chat import ChatRequest, ChatResponse
+from llm_gateway.schemas.chat import ChatRequest, ChatResponse, ChatResponseChunk
 
 
 class BaseLLMProvider(ABC):
@@ -9,7 +10,9 @@ class BaseLLMProvider(ABC):
     """
 
     @abstractmethod
-    async def chat_complete(self, request: ChatRequest) -> ChatResponse:
+    async def chat_complete(
+        self, request: ChatRequest
+    ) -> Union[ChatResponse, AsyncIterator[ChatResponseChunk]]:
         """
         Generates a response from the LLM based on the chat history.
         """
@@ -18,5 +21,7 @@ class BaseLLMProvider(ABC):
 
 class BaseRouter(ABC):
     @abstractmethod
-    async def route_chat(self, request: ChatRequest) -> ChatResponse:
+    async def route_chat(
+        self, request: ChatRequest
+    ) -> Union[ChatResponse, AsyncIterator[ChatResponseChunk]]:
         raise NotImplementedError

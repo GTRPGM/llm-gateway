@@ -2,7 +2,14 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from llm_gateway.schemas.chat import ChatMessage, ChatResponse, ChatResponseChoice
+from llm_gateway.schemas.chat import (
+    ChatMessage,
+    ChatResponse,
+    ChatResponseChoice,
+    ChatResponseChoiceDelta,
+    ChatResponseChunk,
+    ChatResponseChunkChoice,
+)
 
 
 @pytest.fixture
@@ -10,6 +17,46 @@ def mock_engine(app_instance):
     engine = app_instance.state.engine
     with patch.object(engine, "chat", new_callable=AsyncMock) as mock:
         yield mock
+
+
+def test_chat_completions_streaming_success(mock_engine, client_instance):
+    # Setup Mock Streaming Response
+    mock_chunk = ChatResponseChunk(
+        id="test-id",
+        created=1234567890,
+        model="gpt-4o",
+        choices=[
+            ChatResponseChunkChoice(
+                index=0,
+                delta=ChatResponseChoiceDelta(content="Hello"),
+                finish_reason=None,
+            )
+        ],
+    )
+
+    async def mock_async_iterator():
+        yield mock_chunk
+
+    mock_engine.return_value = mock_async_iterator()
+
+    payload = {
+        "model": "gpt-4o",
+        "messages": [{"role": "user", "content": "Hello"}],
+        "stream": True,
+    }
+
+    # Execute
+    response = client_instance.post("/api/v1/chat/completions", json=payload)
+
+    # Verify
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
+
+    # Check body content
+    body = response.text
+    assert "data: " in body
+    assert '"content":"Hello"' in body
+    assert "data: [DONE]" in body
 
 
 def test_chat_completions_success(mock_engine, client_instance):
@@ -57,3 +104,17 @@ def test_chat_completions_provider_error(mock_engine, client_instance):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Invalid model"
+
+
+def test_chat_completions_internal_error(mock_engine, client_instance):
+    mock_engine.side_effect = Exception("Unexpected error")
+
+    payload = {
+        "model": "gpt-4o",
+        "messages": [{"role": "user", "content": "Hi"}],
+    }
+
+    response = client_instance.post("/api/v1/chat/completions", json=payload)
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Internal Server Error"

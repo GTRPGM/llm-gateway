@@ -1,8 +1,17 @@
 #!/bin/bash
 
-# Configuration
-BASE_URL="http://localhost:8060"
-API_KEY="your_api_key_here" # Not strictly used by the gateway auth yet, but good practice to show where it goes
+case "$1" in
+  vm)
+    export BASE_URL=$GCP_HOST:8060
+    ;;
+  local|"")
+    export BASE_URL="http://localhost:8060"
+    ;;
+  *)
+    echo "unknown option: $1 (use local or vm)"
+    exit 1
+    ;;
+esac
 
 echo "=== 1. Health Check ==="
 curl -X GET "$BASE_URL/health"
