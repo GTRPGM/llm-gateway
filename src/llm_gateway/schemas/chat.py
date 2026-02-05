@@ -38,3 +38,23 @@ class ChatResponse(BaseModel):
     created: int
     model: str
     choices: list[ChatResponseChoice]
+
+
+class ChatResponseChoiceDelta(BaseModel):
+    role: str | None = None
+    content: str | None = None
+    tool_calls: list[dict[str, Any]] | None = None
+
+
+class ChatResponseChunkChoice(BaseModel):
+    index: int
+    delta: ChatResponseChoiceDelta
+    finish_reason: str | None = None
+
+
+class ChatResponseChunk(BaseModel):
+    id: str
+    object: str = "chat.completion.chunk"
+    created: int
+    model: str
+    choices: list[ChatResponseChunkChoice]

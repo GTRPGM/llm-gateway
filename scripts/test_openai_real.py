@@ -61,6 +61,22 @@ async def test_real_openai_call():
         )
         print(error_msg)
 
+    # 3. Streaming Test
+    print("\n[Step 3] Testing Streaming...")
+    request_stream = ChatRequest(
+        model="gpt-4o-mini",
+        messages=[ChatMessage(role="user", content="Write a two-sentence poem.")],
+        stream=True,
+    )
+
+    print("Stream output: ", end="", flush=True)
+    response_stream = await provider.chat_complete(request_stream)
+    async for chunk in response_stream:
+        content = chunk.choices[0].delta.content
+        if content:
+            print(content, end="", flush=True)
+    print("\nResult: SUCCESS")
+
     print("\n--- OpenAI Tests Completed ---")
 
 
