@@ -55,7 +55,10 @@ async def test_real_openai_call():
         data = json.loads(response_json.choices[0].message.content)
         print(f"Result: SUCCESS (Parsed JSON: {data})")
     except json.JSONDecodeError:
-        error_msg = f"Result: FAILURE (Invalid JSON: {response_json.choices[0].message.content})"
+        error_msg = (
+            "Result: FAILURE (Invalid JSON: "
+            f"{response_json.choices[0].message.content})"
+        )
         print(error_msg)
 
     print("\n--- OpenAI Tests Completed ---")
