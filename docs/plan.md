@@ -90,16 +90,17 @@ llm-router/
 - [x] `src/llm_gateway/main.py` 헬스 체크 엔드포인트 구현 완료.
 - [x] 환경 변수 관리(`pydantic-settings`) 설정 완료.
 
-### Phase 2: LLM Provider 연동 (진행 중)
+### Phase 2: LLM Provider 연동 (완료)
 
 - [x] Provider 추상 클래스(`BaseLLMProvider`) 정의.
 - [x] Google Gemini Provider 구현 및 연동.
-- [ ] OpenAI Provider 구현 및 연동.
+- [x] OpenAI Provider 구현 및 연동.
 
-### Phase 3: 라우팅 및 서비스 로직
+### Phase 3: 라우팅 및 서비스 로직 (완료)
 
-- [ ] 모델 별칭(Alias) 시스템 구현 (예: `creative` -> `gpt-4`, `fast` -> `gemini-flash`).
-- [ ] `/v1/chat/completions` 엔드포인트 구현.
+- [x] 모델 별칭(Alias) 시스템 구현 (예: `gpt-*` -> OpenAI, `gemini-*` -> Gemini).
+- [x] `/v1/chat/completions` 엔드포인트 구현.
+- [x] 런타임 모델 라우팅 설정 관리 API 구현.
 - [ ] 스트리밍(Streaming) 응답 지원.
 
 ### Phase 4: 관측성 및 안정화
