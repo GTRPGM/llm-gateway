@@ -57,3 +57,17 @@ def test_chat_completions_provider_error(mock_engine, client_instance):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Invalid model"
+
+
+def test_chat_completions_internal_error(mock_engine, client_instance):
+    mock_engine.side_effect = Exception("Unexpected error")
+
+    payload = {
+        "model": "gpt-4o",
+        "messages": [{"role": "user", "content": "Hi"}],
+    }
+
+    response = client_instance.post("/api/v1/chat/completions", json=payload)
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Internal Server Error"

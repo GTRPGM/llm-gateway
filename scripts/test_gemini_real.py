@@ -1,8 +1,8 @@
 import asyncio
 
 from llm_gateway.core.config import settings
+from llm_gateway.extensions.providers.gemini import GeminiProvider
 from llm_gateway.schemas.chat import ChatMessage, ChatRequest
-from llm_gateway.services.providers.gemini import GeminiProvider
 
 
 async def test_real_gemini_call():
@@ -16,7 +16,7 @@ async def test_real_gemini_call():
     # 1. Basic Chat Test
     print("\n[Step 1] Testing Basic Chat...")
     request = ChatRequest(
-        model="gemini-2.0-flash-light",
+        model="gemini-2.0-flash",
         messages=[
             ChatMessage(
                 role="user",
@@ -34,7 +34,7 @@ async def test_real_gemini_call():
     # 2. JSON Mode Test
     print("\n[Step 2] Testing JSON Mode (Structured Output)...")
     request_json = ChatRequest(
-        model="gemini-2.0-flash-light",
+        model="gemini-2.0-flash",
         messages=[
             ChatMessage(
                 role="system",
