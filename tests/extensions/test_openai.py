@@ -1,10 +1,52 @@
+from typing import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from llm_gateway.core.config import settings
 from llm_gateway.extensions.providers.openai import OpenAIProvider
-from llm_gateway.schemas.chat import ChatMessage, ChatRequest
+from llm_gateway.schemas.chat import ChatMessage, ChatRequest, ChatResponseChunk
+
+
+@pytest.mark.asyncio
+async def test_openai_chat_complete_streaming(mock_openai_client):
+    # Setup mock streaming response
+    mock_chunk = MagicMock()
+    mock_chunk.id = "chatcmpl-stream"
+    mock_chunk.created = 123456789
+    mock_chunk.model = "gpt-4o"
+
+    mock_choice = MagicMock()
+    mock_choice.index = 0
+    mock_choice.delta.role = "assistant"
+    mock_choice.delta.content = "Hello"
+    mock_choice.delta.tool_calls = None
+    mock_choice.finish_reason = None
+    mock_chunk.choices = [mock_choice]
+
+    async def mock_async_iterator():
+        yield mock_chunk
+
+    mock_openai_client.chat.completions.create.return_value = mock_async_iterator()
+
+    with patch.object(settings, "OPENAI_API_KEY", "test-key"):
+        provider = OpenAIProvider()
+        request = ChatRequest(
+            model="gpt-4o",
+            messages=[ChatMessage(role="user", content="hello")],
+            stream=True,
+        )
+
+        response = await provider.chat_complete(request)
+        assert isinstance(response, AsyncIterator)
+
+        chunks = []
+        async for chunk in response:
+            chunks.append(chunk)
+
+        assert len(chunks) == 1
+        assert isinstance(chunks[0], ChatResponseChunk)
+        assert chunks[0].choices[0].delta.content == "Hello"
 
 
 @pytest.fixture

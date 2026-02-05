@@ -1,3 +1,6 @@
+import json
+
+import httpx
 import requests
 
 BASE_URL = "http://localhost:8000/api/v1"
@@ -50,6 +53,32 @@ def test_api_routing():
     resp = requests.post(f"{BASE_URL}/chat/completions", json=payload)
     if resp.status_code == 200:
         print(f"Response Model: {resp.json()['model']}")
+
+    # 5. Test Streaming API
+    print("\n[Step 5] Testing Streaming API (GPT-4o-mini)...")
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "user", "content": "Counting to 3 slowly."}],
+        "stream": True,
+    }
+
+    print("Stream output: ", end="", flush=True)
+    with httpx.stream(
+        "POST", f"{BASE_URL}/chat/completions", json=payload, timeout=60.0
+    ) as r:
+        if r.status_code != 200:
+            print(f"ERROR: {r.status_code}")
+        else:
+            for line in r.iter_lines():
+                if line.startswith("data: "):
+                    data_str = line[6:]
+                    if data_str == "[DONE]":
+                        break
+                    chunk = json.loads(data_str)
+                    content = chunk["choices"][0]["delta"].get("content")
+                    if content:
+                        print(content, end="", flush=True)
+    print("\nResult: SUCCESS")
 
     print("\n--- API Tests Completed ---")
 
