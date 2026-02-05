@@ -1,6 +1,8 @@
+from typing import AsyncIterator, Union
+
 from llm_gateway.core.config import settings
 from llm_gateway.core.interfaces import BaseLLMProvider, BaseRouter
-from llm_gateway.schemas.chat import ChatRequest, ChatResponse
+from llm_gateway.schemas.chat import ChatRequest, ChatResponse, ChatResponseChunk
 
 
 class SimpleRouter(BaseRouter):
@@ -29,7 +31,9 @@ class SimpleRouter(BaseRouter):
         # 3. 그 외 기본 설정된 공급자 사용
         return self.providers[self.default_provider]
 
-    async def route_chat(self, request: ChatRequest) -> ChatResponse:
+    async def route_chat(
+        self, request: ChatRequest
+    ) -> Union[ChatResponse, AsyncIterator[ChatResponseChunk]]:
         provider = self._select_provider(request.model)
         return await provider.chat_complete(request)
 
