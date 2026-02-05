@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, AsyncIterator, Union
 
 from openai import AsyncOpenAI
 
@@ -9,6 +9,9 @@ from llm_gateway.schemas.chat import (
     ChatRequest,
     ChatResponse,
     ChatResponseChoice,
+    ChatResponseChoiceDelta,
+    ChatResponseChunk,
+    ChatResponseChunkChoice,
 )
 
 
@@ -32,14 +35,16 @@ class OpenAIProvider(BaseLLMProvider):
             openai_messages.append(m)
         return openai_messages
 
-    async def chat_complete(self, request: ChatRequest) -> ChatResponse:
+    async def chat_complete(
+        self, request: ChatRequest
+    ) -> Union[ChatResponse, AsyncIterator[ChatResponseChunk]]:
         if not self.client:
             if not settings.OPENAI_API_KEY:
                 raise ValueError("OPENAI_API_KEY is not set.")
             self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
         model_name = request.model
-        if model_name in ["openai", "gpt"]:
+        if model_name in ["openai", "gpt", "default"]:
             model_name = settings.OPENAI_DEFAULT_MODEL
 
         # Prepare arguments for OpenAI API
@@ -61,6 +66,47 @@ class OpenAIProvider(BaseLLMProvider):
 
         # Call OpenAI API
         response = await self.client.chat.completions.create(**kwargs)
+
+        if request.stream:
+
+            async def gen():
+                async for chunk in response:
+                    choices = []
+                    for choice in chunk.choices:
+                        delta = ChatResponseChoiceDelta(
+                            role=choice.delta.role,
+                            content=choice.delta.content,
+                        )
+                        if choice.delta.tool_calls:
+                            delta.tool_calls = [
+                                {
+                                    "index": tc.index,
+                                    "id": tc.id,
+                                    "type": tc.type,
+                                    "function": {
+                                        "name": tc.function.name,
+                                        "arguments": tc.function.arguments,
+                                    },
+                                }
+                                for tc in choice.delta.tool_calls
+                            ]
+
+                        choices.append(
+                            ChatResponseChunkChoice(
+                                index=choice.index,
+                                delta=delta,
+                                finish_reason=choice.finish_reason,
+                            )
+                        )
+
+                    yield ChatResponseChunk(
+                        id=chunk.id,
+                        created=chunk.created,
+                        model=chunk.model,
+                        choices=choices,
+                    )
+
+            return gen()
 
         # Convert OpenAI response to our ChatResponse
         choices = []
