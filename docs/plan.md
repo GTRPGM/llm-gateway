@@ -101,7 +101,7 @@ llm-router/
 - [x] 모델 별칭(Alias) 시스템 구현 (예: `gpt-*` -> OpenAI, `gemini-*` -> Gemini).
 - [x] `/v1/chat/completions` 엔드포인트 구현.
 - [x] 런타임 모델 라우팅 설정 관리 API 구현.
-- [ ] 스트리밍(Streaming) 응답 지원.
+- [x] 스트리밍(Streaming) 응답 지원. ([상세 계획](./streaming_plan.md))
 
 ### Phase 4: 관측성 및 안정화
 
