@@ -1,6 +1,8 @@
+import logging
 from typing import Any, AsyncIterator, Union
 
-from openai import AsyncOpenAI
+from fastapi import HTTPException
+from openai import AsyncOpenAI, OpenAIError
 
 from llm_gateway.core.config import settings
 from llm_gateway.core.interfaces import BaseLLMProvider
@@ -13,6 +15,8 @@ from llm_gateway.schemas.chat import (
     ChatResponseChunk,
     ChatResponseChunkChoice,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAIProvider(BaseLLMProvider):
@@ -65,46 +69,64 @@ class OpenAIProvider(BaseLLMProvider):
                 kwargs["tool_choice"] = request.tool_choice
 
         # Call OpenAI API
-        response = await self.client.chat.completions.create(**kwargs)
+        try:
+            response = await self.client.chat.completions.create(**kwargs)
+        except OpenAIError as e:
+            logger.error(f"OpenAI API Error: {str(e)}")
+            raise HTTPException(
+                status_code=502, detail=f"Error from OpenAI Provider: {str(e)}"
+            ) from e
+        except Exception as e:
+            logger.error(f"Unexpected Error in OpenAIProvider: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Unexpected Error in OpenAIProvider: {str(e)}"
+            ) from e
 
         if request.stream:
 
             async def gen():
-                async for chunk in response:
-                    choices = []
-                    for choice in chunk.choices:
-                        delta = ChatResponseChoiceDelta(
-                            role=choice.delta.role,
-                            content=choice.delta.content,
-                        )
-                        if choice.delta.tool_calls:
-                            delta.tool_calls = [
-                                {
-                                    "index": tc.index,
-                                    "id": tc.id,
-                                    "type": tc.type,
-                                    "function": {
-                                        "name": tc.function.name,
-                                        "arguments": tc.function.arguments,
-                                    },
-                                }
-                                for tc in choice.delta.tool_calls
-                            ]
-
-                        choices.append(
-                            ChatResponseChunkChoice(
-                                index=choice.index,
-                                delta=delta,
-                                finish_reason=choice.finish_reason,
+                try:
+                    async for chunk in response:
+                        choices = []
+                        for choice in chunk.choices:
+                            delta = ChatResponseChoiceDelta(
+                                role=choice.delta.role,
+                                content=choice.delta.content,
                             )
-                        )
+                            if choice.delta.tool_calls:
+                                delta.tool_calls = [
+                                    {
+                                        "index": tc.index,
+                                        "id": tc.id,
+                                        "type": tc.type,
+                                        "function": {
+                                            "name": tc.function.name,
+                                            "arguments": tc.function.arguments,
+                                        },
+                                    }
+                                    for tc in choice.delta.tool_calls
+                                ]
 
-                    yield ChatResponseChunk(
-                        id=chunk.id,
-                        created=chunk.created,
-                        model=chunk.model,
-                        choices=choices,
-                    )
+                            choices.append(
+                                ChatResponseChunkChoice(
+                                    index=choice.index,
+                                    delta=delta,
+                                    finish_reason=choice.finish_reason,
+                                )
+                            )
+
+                        yield ChatResponseChunk(
+                            id=chunk.id,
+                            created=chunk.created,
+                            model=chunk.model,
+                            choices=choices,
+                        )
+                except OpenAIError as e:
+                    logger.error(f"OpenAI Stream Error: {str(e)}")
+                    # Streaming errors are harder to propagate as HTTP exceptions
+                    # but we log them for visibility.
+                except Exception as e:
+                    logger.error(f"Unexpected OpenAI Stream Error: {str(e)}")
 
             return gen()
 

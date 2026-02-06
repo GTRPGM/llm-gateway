@@ -30,5 +30,5 @@ async def chat_completions(request: Request, body: ChatRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal Server Error") from e
+    # Let other exceptions (including HTTPException from providers) propagate
+    # to the global exception handler in main.py
