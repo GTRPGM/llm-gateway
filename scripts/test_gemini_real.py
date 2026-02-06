@@ -65,6 +65,22 @@ async def test_real_gemini_call():
     print("Result: SUCCESS")
     print(f"JSON Response: {response_json.choices[0].message.content}")
 
+    # 3. Streaming Test
+    print("\n[Step 3] Testing Streaming...")
+    request_stream = ChatRequest(
+        model="gemini-2.0-flash",
+        messages=[ChatMessage(role="user", content="Write a two-sentence poem.")],
+        stream=True,
+    )
+
+    print("Stream output: ", end="", flush=True)
+    response_stream = await provider.chat_complete(request_stream)
+    async for chunk in response_stream:
+        content = chunk.choices[0].delta.content
+        if content:
+            print(content, end="", flush=True)
+    print("\nResult: SUCCESS")
+
     print("\n--- All Tests Passed Successfully ---")
 
 

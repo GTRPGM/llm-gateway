@@ -1,6 +1,7 @@
 import json
 import time
 import uuid
+from typing import AsyncIterator, Union
 
 from google import genai
 from google.genai import types
@@ -12,6 +13,9 @@ from llm_gateway.schemas.chat import (
     ChatRequest,
     ChatResponse,
     ChatResponseChoice,
+    ChatResponseChoiceDelta,
+    ChatResponseChunk,
+    ChatResponseChunkChoice,
 )
 
 
@@ -102,10 +106,12 @@ class GeminiProvider(BaseLLMProvider):
 
         return [types.Tool(function_declarations=function_declarations)]
 
-    async def chat_complete(self, request: ChatRequest) -> ChatResponse:
+    async def chat_complete(
+        self, request: ChatRequest
+    ) -> Union[ChatResponse, AsyncIterator[ChatResponseChunk]]:
         # 모델명 결정
         model_name = request.model
-        if not model_name or model_name == "gemini" or model_name == "google":
+        if model_name in [None, "", "gemini", "google", "default"]:
             model_name = settings.GEMINI_DEFAULT_MODEL
 
         history, system_instruction = self._convert_messages(request.messages)
@@ -178,7 +184,67 @@ class GeminiProvider(BaseLLMProvider):
         else:
             last_message_content = "..."
 
-        # 비동기 호출 (이미 await 사용 중)
+        if request.stream:
+            stream_response = await chat.send_message_stream(
+                message=last_message_content
+            )
+            request_id = f"chatcmpl-{uuid.uuid4()}"
+
+            async def gen():
+                async for chunk in stream_response:
+                    content = ""
+                    tool_calls = []
+                    finish_reason = None
+
+                    if chunk.candidates and chunk.candidates[0].content.parts:
+                        for part in chunk.candidates[0].content.parts:
+                            if part.text:
+                                content += part.text
+                            if part.function_call:
+                                tool_calls.append(
+                                    {
+                                        "id": part.function_call.name,
+                                        "type": "function",
+                                        "function": {
+                                            "name": part.function_call.name,
+                                            "arguments": json.dumps(
+                                                part.function_call.args
+                                            ),
+                                        },
+                                    }
+                                )
+
+                        if chunk.candidates[0].finish_reason:
+                            # Mapping Gemini finish reason to OpenAI
+                            fr = chunk.candidates[0].finish_reason
+                            if fr == "STOP":
+                                finish_reason = "stop"
+                            elif fr == "MAX_TOKENS":
+                                finish_reason = "length"
+                            elif fr == "SAFETY":
+                                finish_reason = "content_filter"
+                            else:
+                                finish_reason = str(fr).lower()
+
+                    yield ChatResponseChunk(
+                        id=request_id,
+                        created=int(time.time()),
+                        model=model_name,
+                        choices=[
+                            ChatResponseChunkChoice(
+                                index=0,
+                                delta=ChatResponseChoiceDelta(
+                                    content=content if content else None,
+                                    tool_calls=tool_calls if tool_calls else None,
+                                ),
+                                finish_reason=finish_reason,
+                            )
+                        ],
+                    )
+
+            return gen()
+
+        # 비동기 호출
         response = await chat.send_message(message=last_message_content)
 
         # Response parsing

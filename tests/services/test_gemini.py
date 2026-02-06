@@ -1,10 +1,54 @@
 import json
+from typing import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from llm_gateway.extensions.providers import GeminiProvider
-from llm_gateway.schemas.chat import ChatMessage, ChatRequest
+from llm_gateway.schemas.chat import ChatMessage, ChatRequest, ChatResponseChunk
+
+
+@pytest.mark.asyncio
+async def test_gemini_chat_complete_streaming(mock_genai_client):
+    # Setup Mock
+    mock_client_instance = MagicMock()
+    mock_chat_session = MagicMock()
+
+    mock_genai_client.return_value = mock_client_instance
+    mock_client_instance.aio.chats.create.return_value = mock_chat_session
+
+    mock_chunk = MagicMock()
+    mock_part = MagicMock()
+    mock_part.text = "Hello"
+    mock_part.function_call = None
+    mock_chunk.candidates = [
+        MagicMock(content=MagicMock(parts=[mock_part]), finish_reason=None)
+    ]
+
+    async def mock_stream_iterator():
+        yield mock_chunk
+
+    mock_chat_session.send_message_stream = AsyncMock(
+        return_value=mock_stream_iterator()
+    )
+
+    provider = GeminiProvider()
+    request = ChatRequest(
+        model="gemini-2.0-flash",
+        messages=[ChatMessage(role="user", content="hello")],
+        stream=True,
+    )
+
+    response = await provider.chat_complete(request)
+    assert isinstance(response, AsyncIterator)
+
+    chunks = []
+    async for chunk in response:
+        chunks.append(chunk)
+
+    assert len(chunks) == 1
+    assert isinstance(chunks[0], ChatResponseChunk)
+    assert chunks[0].choices[0].delta.content == "Hello"
 
 
 @pytest.mark.asyncio

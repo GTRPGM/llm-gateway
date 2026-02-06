@@ -17,13 +17,14 @@ case "$COMMAND" in
         docker run --rm -d\
           -p 8060:8060\
           -e GOOGLE_API_KEY=${GOOGLE_API_KEY}\
+          -e OPENAI_API_KEY=${OPENAI_API_KEY}\
           llm-gateway
         ;;
     build)
         docker build -t llm-gateway .
         ;;
     test-api)
-        bash ./bin/api_test
+        bash ./bin/test-api
         ;;
     lint)
         echo "Running Ruff Linter & Formatter..."

@@ -1,10 +1,14 @@
+from typing import AsyncIterator, Union
+
 from llm_gateway.core.interfaces import BaseRouter
-from llm_gateway.schemas.chat import ChatRequest, ChatResponse
+from llm_gateway.schemas.chat import ChatRequest, ChatResponse, ChatResponseChunk
 
 
 class LLMEngine:
     def __init__(self, router: BaseRouter):
         self.router = router
 
-    async def chat(self, request: ChatRequest) -> ChatResponse:
+    async def chat(
+        self, request: ChatRequest
+    ) -> Union[ChatResponse, AsyncIterator[ChatResponseChunk]]:
         return await self.router.route_chat(request)
