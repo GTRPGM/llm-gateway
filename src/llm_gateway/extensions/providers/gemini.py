@@ -1,8 +1,10 @@
 import json
+import logging
 import time
 import uuid
 from typing import AsyncIterator, Union
 
+from fastapi import HTTPException
 from google import genai
 from google.genai import types
 
@@ -17,6 +19,8 @@ from llm_gateway.schemas.chat import (
     ChatResponseChunk,
     ChatResponseChunkChoice,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class GeminiProvider(BaseLLMProvider):
@@ -185,67 +189,83 @@ class GeminiProvider(BaseLLMProvider):
             last_message_content = "..."
 
         if request.stream:
-            stream_response = await chat.send_message_stream(
-                message=last_message_content
-            )
+            try:
+                stream_response = await chat.send_message_stream(
+                    message=last_message_content
+                )
+            except Exception as e:
+                logger.error(f"Gemini API Stream Error: {str(e)}")
+                raise HTTPException(
+                    status_code=502, detail=f"Error from Gemini Provider: {str(e)}"
+                ) from e
+
             request_id = f"chatcmpl-{uuid.uuid4()}"
 
             async def gen():
-                async for chunk in stream_response:
-                    content = ""
-                    tool_calls = []
-                    finish_reason = None
+                try:
+                    async for chunk in stream_response:
+                        content = ""
+                        tool_calls = []
+                        finish_reason = None
 
-                    if chunk.candidates and chunk.candidates[0].content.parts:
-                        for part in chunk.candidates[0].content.parts:
-                            if part.text:
-                                content += part.text
-                            if part.function_call:
-                                tool_calls.append(
-                                    {
-                                        "id": part.function_call.name,
-                                        "type": "function",
-                                        "function": {
-                                            "name": part.function_call.name,
-                                            "arguments": json.dumps(
-                                                part.function_call.args
-                                            ),
-                                        },
-                                    }
+                        if chunk.candidates and chunk.candidates[0].content.parts:
+                            for part in chunk.candidates[0].content.parts:
+                                if part.text:
+                                    content += part.text
+                                if part.function_call:
+                                    tool_calls.append(
+                                        {
+                                            "id": part.function_call.name,
+                                            "type": "function",
+                                            "function": {
+                                                "name": part.function_call.name,
+                                                "arguments": json.dumps(
+                                                    part.function_call.args
+                                                ),
+                                            },
+                                        }
+                                    )
+
+                            if chunk.candidates[0].finish_reason:
+                                # Mapping Gemini finish reason to OpenAI
+                                fr = chunk.candidates[0].finish_reason
+                                if fr == "STOP":
+                                    finish_reason = "stop"
+                                elif fr == "MAX_TOKENS":
+                                    finish_reason = "length"
+                                elif fr == "SAFETY":
+                                    finish_reason = "content_filter"
+                                else:
+                                    finish_reason = str(fr).lower()
+
+                        yield ChatResponseChunk(
+                            id=request_id,
+                            created=int(time.time()),
+                            model=model_name,
+                            choices=[
+                                ChatResponseChunkChoice(
+                                    index=0,
+                                    delta=ChatResponseChoiceDelta(
+                                        content=content if content else None,
+                                        tool_calls=tool_calls if tool_calls else None,
+                                    ),
+                                    finish_reason=finish_reason,
                                 )
-
-                        if chunk.candidates[0].finish_reason:
-                            # Mapping Gemini finish reason to OpenAI
-                            fr = chunk.candidates[0].finish_reason
-                            if fr == "STOP":
-                                finish_reason = "stop"
-                            elif fr == "MAX_TOKENS":
-                                finish_reason = "length"
-                            elif fr == "SAFETY":
-                                finish_reason = "content_filter"
-                            else:
-                                finish_reason = str(fr).lower()
-
-                    yield ChatResponseChunk(
-                        id=request_id,
-                        created=int(time.time()),
-                        model=model_name,
-                        choices=[
-                            ChatResponseChunkChoice(
-                                index=0,
-                                delta=ChatResponseChoiceDelta(
-                                    content=content if content else None,
-                                    tool_calls=tool_calls if tool_calls else None,
-                                ),
-                                finish_reason=finish_reason,
-                            )
-                        ],
-                    )
+                            ],
+                        )
+                except Exception as e:
+                    logger.error(f"Gemini Stream Chunk Error: {str(e)}")
 
             return gen()
 
         # 비동기 호출
-        response = await chat.send_message(message=last_message_content)
+        try:
+            response = await chat.send_message(message=last_message_content)
+        except Exception as e:
+            logger.error(f"Gemini API Error: {str(e)}")
+            raise HTTPException(
+                status_code=502, detail=f"Error from Gemini Provider: {str(e)}"
+            ) from e
 
         # Response parsing
         response_content = None

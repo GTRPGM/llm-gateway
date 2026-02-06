@@ -40,4 +40,5 @@
 ## Work Notes by Detail
 
 - plan_0001: OpenAI `o3` 모델 지원 추가 (`SimpleRouter`), `bin/project`의 `test-api` 경로 수정 및 컨테이너 실행 시 `OPENAI_API_KEY` 주입 추가.
+- plan_0002: FastAPI 전역 예외 핸들러 도입을 통한 에러 로깅 강화. RequestValidationError 시 요청 본문 출력, LLM API 호출 실패 시 상세 메시지 포함 502 에러 반환.
 <!-- PROJ_WORKNOTES_END -->
