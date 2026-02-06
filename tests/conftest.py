@@ -22,7 +22,7 @@ def app_instance():
 
 @pytest.fixture
 def client_instance(app_instance):
-    return TestClient(app_instance)
+    return TestClient(app_instance, raise_server_exceptions=False)
 
 
 @pytest.fixture(autouse=True)
