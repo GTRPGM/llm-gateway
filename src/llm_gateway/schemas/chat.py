@@ -9,6 +9,10 @@ class ChatMessage(BaseModel):
     tool_calls: list[dict[str, Any]] | None = None  # Tool 호출 정보
     tool_call_id: str | None = None  # Tool 응답 시 해당 호출 ID
 
+    model_config = {
+        "json_schema_extra": {"example": {"role": "user", "content": "안녕하세요!"}}
+    }
+
 
 class ChatRequest(BaseModel):
     model: str
@@ -24,6 +28,20 @@ class ChatRequest(BaseModel):
     # Tool(Function) Calling 지원
     tools: list[dict[str, Any]] | None = None
     tool_choice: str | dict[str, Any] | None = None
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": "안녕하세요! 간단한 인사를 해주세요."},
+                ],
+                "temperature": 0.7,
+                "stream": False,
+            }
+        }
+    }
 
 
 class ChatResponseChoice(BaseModel):

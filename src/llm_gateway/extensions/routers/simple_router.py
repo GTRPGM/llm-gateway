@@ -17,7 +17,7 @@ class SimpleRouter(BaseRouter):
             return self.providers[self.override_provider]
 
         # 1. 특정 모델명이 명시된 경우 (강제 적용)
-        if model.startswith(("gpt", "o1", "text-embedding-3")):
+        if model.startswith(("gpt", "o1", "o3")):
             return self.providers["openai"]
         if model.startswith("gemini"):
             return self.providers["google"]
@@ -42,7 +42,7 @@ class SimpleRouter(BaseRouter):
         # Override 설정 시, 모델명이 타 공급자용이면 'default'로 치환하여 에러 방지
         if self.override_provider:
             model = request.model
-            is_openai_model = model.startswith(("gpt", "o1", "text-embedding-3"))
+            is_openai_model = model.startswith(("gpt", "o1", "o3"))
             is_gemini_model = model.startswith("gemini")
 
             if self.override_provider == "openai" and is_gemini_model:

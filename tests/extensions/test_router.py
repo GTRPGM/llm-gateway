@@ -29,6 +29,30 @@ async def test_router_select_openai_by_model_name(router, mock_providers):
 
 
 @pytest.mark.asyncio
+async def test_router_select_openai_gpt4o_mini(router, mock_providers):
+    request = ChatRequest(
+        model="gpt-4o-mini", messages=[ChatMessage(role="user", content="hi")]
+    )
+    mock_providers["openai"].chat_complete = AsyncMock()
+
+    await router.route_chat(request)
+    mock_providers["openai"].chat_complete.assert_called_once()
+    mock_providers["google"].chat_complete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_router_select_openai_o3_model(router, mock_providers):
+    request = ChatRequest(
+        model="o3-mini", messages=[ChatMessage(role="user", content="hi")]
+    )
+    mock_providers["openai"].chat_complete = AsyncMock()
+
+    await router.route_chat(request)
+    mock_providers["openai"].chat_complete.assert_called_once()
+    mock_providers["google"].chat_complete.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_router_select_google_by_model_name(router, mock_providers):
     request = ChatRequest(
         model="gemini-pro", messages=[ChatMessage(role="user", content="hi")]
