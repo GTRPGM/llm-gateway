@@ -12,7 +12,9 @@ class Settings(BaseSettings):
     # Model Configuration
     GEMINI_DEFAULT_MODEL: str = "gemini-2.0-flash-lite-001"
     OPENAI_DEFAULT_MODEL: str = "gpt-4o-mini"
-    DEFAULT_PROVIDER: str = "google"  # "google" or "openai"
+    DEFAULT_PROVIDER: str = "openai"  # "google" or "openai"
+    OPENAI_RETRY_ATTEMPTS: int = 3
+    OPENAI_RETRY_BASE_DELAY: float = 0.8
 
     # Observability
     LANGSMITH_TRACING: bool = False

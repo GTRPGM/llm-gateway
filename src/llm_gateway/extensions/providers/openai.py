@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from typing import Any, AsyncIterator, Union
 
 from fastapi import HTTPException
@@ -68,19 +69,48 @@ class OpenAIProvider(BaseLLMProvider):
             if request.tool_choice:
                 kwargs["tool_choice"] = request.tool_choice
 
-        # Call OpenAI API
-        try:
-            response = await self.client.chat.completions.create(**kwargs)
-        except OpenAIError as e:
-            logger.error(f"OpenAI API Error: {str(e)}")
-            raise HTTPException(
-                status_code=502, detail=f"Error from OpenAI Provider: {str(e)}"
-            ) from e
-        except Exception as e:
-            logger.error(f"Unexpected Error in OpenAIProvider: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Unexpected Error in OpenAIProvider: {str(e)}"
-            ) from e
+        # Call OpenAI API with retry on transient provider failures.
+        response = None
+        last_error: Exception | None = None
+        for attempt in range(1, settings.OPENAI_RETRY_ATTEMPTS + 1):
+            try:
+                response = await self.client.chat.completions.create(**kwargs)
+                break
+            except OpenAIError as e:
+                last_error = e
+                logger.warning(
+                    "OpenAI API Error (attempt %s/%s): %s",
+                    attempt,
+                    settings.OPENAI_RETRY_ATTEMPTS,
+                    str(e),
+                )
+                if attempt >= settings.OPENAI_RETRY_ATTEMPTS:
+                    raise HTTPException(
+                        status_code=502, detail=f"Error from OpenAI Provider: {str(e)}"
+                    ) from e
+                await asyncio.sleep(
+                    settings.OPENAI_RETRY_BASE_DELAY * (2 ** (attempt - 1))
+                )
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    "Unexpected OpenAI provider error (attempt %s/%s): %s",
+                    attempt,
+                    settings.OPENAI_RETRY_ATTEMPTS,
+                    str(e),
+                )
+                if attempt >= settings.OPENAI_RETRY_ATTEMPTS:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Unexpected Error in OpenAIProvider: {str(e)}",
+                    ) from e
+                await asyncio.sleep(
+                    settings.OPENAI_RETRY_BASE_DELAY * (2 ** (attempt - 1))
+                )
+
+        if response is None:
+            detail = str(last_error) if last_error else "Unknown OpenAI failure"
+            raise HTTPException(status_code=500, detail=detail)
 
         if request.stream:
 
