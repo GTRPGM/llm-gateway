@@ -171,6 +171,44 @@ async def test_openai_chat_complete_json_mode(mock_openai_client):
 
 
 @pytest.mark.asyncio
+async def test_openai_chat_complete_json_schema_missing_name_is_filled(
+    mock_openai_client,
+):
+    mock_response = MagicMock()
+    mock_response.id = "chatcmpl-jsonschema"
+    mock_response.created = 123456789
+    mock_response.model = "gpt-4o"
+    mock_response.choices = []
+
+    mock_openai_client.chat.completions.create.return_value = mock_response
+
+    with patch.object(settings, "OPENAI_API_KEY", "test-key"):
+        provider = OpenAIProvider()
+        request = ChatRequest(
+            model="gpt-4o",
+            messages=[ChatMessage(role="user", content="Output JSON schema")],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    # name intentionally omitted
+                    "schema": {
+                        "type": "object",
+                        "properties": {"ok": {"type": "boolean"}},
+                        "required": ["ok"],
+                    }
+                },
+            },
+        )
+
+        await provider.chat_complete(request)
+
+        _, kwargs = mock_openai_client.chat.completions.create.call_args
+        rf = kwargs["response_format"]
+        assert rf["type"] == "json_schema"
+        assert rf["json_schema"]["name"] == "structured_output"
+
+
+@pytest.mark.asyncio
 async def test_openai_chat_complete_no_api_key():
     with patch.object(settings, "OPENAI_API_KEY", None):
         provider = OpenAIProvider()

@@ -1,5 +1,5 @@
-import logging
 import asyncio
+import logging
 from typing import Any, AsyncIterator, Union
 
 from fastapi import HTTPException
@@ -62,7 +62,18 @@ class OpenAIProvider(BaseLLMProvider):
         }
 
         if request.response_format:
-            kwargs["response_format"] = request.response_format
+            # OpenAI requires response_format.json_schema.name when using json_schema.
+            # Some upstream callers only provide
+            # {"type":"json_schema","json_schema":{"schema":...}}.
+            rf = dict(request.response_format)
+            if rf.get("type") == "json_schema":
+                js = rf.get("json_schema")
+                if isinstance(js, dict):
+                    if not js.get("name"):
+                        js = dict(js)
+                        js["name"] = "structured_output"
+                        rf["json_schema"] = js
+            kwargs["response_format"] = rf
 
         if request.tools:
             kwargs["tools"] = request.tools
